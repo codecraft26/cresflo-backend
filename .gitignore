@@ -9,7 +9,7 @@ dist
 # code coverage
 coverage
 *.lcov
-
+Cresflo_AI_Advisor_Technical_Design_Exercise.md
 # logs
 logs
 _.log
