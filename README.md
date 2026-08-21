@@ -1,15 +1,37 @@
 # cresflo-backend
 
-To install dependencies:
+Express + TypeScript backend scaffold with a clean `app.ts` and `server.ts` setup.
+
+## Structure
+
+```text
+src/
+  app.ts
+  server.ts
+  controllers/
+    health.controller.ts
+  middlewares/
+    error-handler.ts
+    not-found.ts
+  routes/
+    health.routes.ts
+    index.ts
+```
+
+## Install dependencies
 
 ```bash
 bun install
 ```
 
-To run:
+## Build
 
 ```bash
-bun run index.ts
+npm run build
 ```
 
-This project was created using `bun init` in bun v1.3.10. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Start the server
+
+```bash
+npm run start
+```
