@@ -1,16 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { env } from "../config/env.js";
-
-const allowedOrigins = new Set(env.CORS_ALLOWED_ORIGINS);
-
 const corsMiddleware = (request: Request, response: Response, next: NextFunction) => {
   const origin = request.header("origin");
 
-  if (origin && allowedOrigins.has(origin)) {
-    response.header("Access-Control-Allow-Origin", origin);
-    response.header("Vary", "Origin");
-  }
+  response.header("Access-Control-Allow-Origin", origin ?? "*");
+  response.header("Vary", "Origin");
 
   response.header(
     "Access-Control-Allow-Methods",
