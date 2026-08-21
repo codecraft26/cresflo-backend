@@ -40,6 +40,11 @@ const searchPortfolio = async (
           principalOutstanding: record.principalOutstanding,
           status: record.status,
           riskScore: record.riskScore,
+          daysPastDue: record.daysPastDue,
+          propertyValue: record.propertyValue,
+          extensionEligible: record.extensionEligible,
+          interestCollectedLastQuarter: record.interestCollectedLastQuarter,
+          interestCollectedPreviousQuarter: record.interestCollectedPreviousQuarter,
         })),
       },
       evidence: [

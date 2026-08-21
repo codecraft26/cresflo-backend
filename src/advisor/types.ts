@@ -51,13 +51,38 @@ type QueryConstraint =
     }
   | {
       field: "principalOutstanding";
-      operator: "gt";
+      operator: "gt" | "lt";
       value: number;
     }
   | {
       field: "province";
       operator: "in";
       value: Province[];
+    }
+  | {
+      field: "borrowerName";
+      operator: "contains";
+      value: string;
+    }
+  | {
+      field: "loanId";
+      operator: "eq";
+      value: string;
+    }
+  | {
+      field: "riskScore" | "daysPastDue";
+      operator: "gte" | "lte";
+      value: number;
+    }
+  | {
+      field: "propertyValue";
+      operator: "gt" | "lt";
+      value: number;
+    }
+  | {
+      field: "extensionEligible";
+      operator: "eq";
+      value: boolean;
     };
 
 type QuerySnapshot = {

@@ -1,4 +1,4 @@
-import type { LlmProvider, PlanInput } from "./provider.js";
+import type { GroundedAnswerInput, LlmProvider, PlanInput } from "./provider.js";
 import type { PlannedAction, Province, QueryConstraint } from "../types.js";
 
 const provinceNames: Province[] = [
@@ -73,7 +73,10 @@ class MockLlmProvider implements LlmProvider {
     if (
       normalized.includes("loan agreement") ||
       normalized.includes("six-month extension") ||
-      normalized.includes("six month extension")
+      normalized.includes("six month extension") ||
+      normalized.includes("document") ||
+      normalized.includes("pdf") ||
+      normalized.includes("policy")
     ) {
       const lastQueryLoanId =
         conversation.queryHistory[conversation.queryHistory.length - 1]
@@ -145,10 +148,19 @@ class MockLlmProvider implements LlmProvider {
     }
 
     return {
-      kind: "clarification",
-      question:
-        "I can help with portfolio filters, lender-defined concepts, and loan-agreement checks. Which of those should I use here?",
+      kind: "document-check",
+      question: message,
     };
+  }
+
+  async generateGroundedAnswer(input: GroundedAnswerInput): Promise<string> {
+    const firstExcerpt = input.documents[0];
+
+    if (!firstExcerpt) {
+      return "I could not find that information in the uploaded organization documents.";
+    }
+
+    return `The closest information in ${firstExcerpt.title} is: ${firstExcerpt.content}`;
   }
 }
 

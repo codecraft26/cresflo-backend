@@ -143,7 +143,12 @@ class DocumentIngestionService {
       throw new HttpError(400, "Document content must be at least 30 characters.");
     }
 
-    if (input.loanId) {
+    const loanId =
+      input.type === "loan_agreement" ? input.loanId?.trim() || undefined : undefined;
+    const sixMonthExtensionAllowed =
+      input.type === "loan_agreement" && (input.sixMonthExtensionAllowed ?? false);
+
+    if (loanId) {
       const [loan] = await this.portfolios.findLoansByIds(
         {
           tenantId: organization.id,
@@ -151,7 +156,7 @@ class DocumentIngestionService {
           lenderId: organization.lenderId,
           role: "admin",
         },
-        [input.loanId],
+        [loanId],
       );
 
       if (!loan) {
@@ -197,12 +202,12 @@ class DocumentIngestionService {
 
     const document = await this.documents.createDocumentWithChunks({
       tenantId: organization.id,
-      loanId: input.loanId,
+      loanId,
       title: input.title.trim(),
       type: input.type,
       summary: input.summary?.trim() || chunks[0]!.slice(0, 220),
       content: input.content.trim(),
-      sixMonthExtensionAllowed: input.sixMonthExtensionAllowed ?? false,
+      sixMonthExtensionAllowed,
       chunks: chunkEmbeddings,
     });
 

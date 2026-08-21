@@ -13,6 +13,7 @@ import type {
   ConversationState,
   QuerySnapshot,
 } from "../types.js";
+import { formatAdvisorAnswerAsMarkdown } from "../utils/format-answer-markdown.js";
 
 type CapabilitySet = {
   searchPortfolio: (
@@ -48,7 +49,7 @@ type CapabilitySet = {
 type AdvisorStreamHooks = {
   onPlanningStarted?: () => Promise<void> | void;
   onPlanReady?: (plan: { kind: string }) => Promise<void> | void;
-  onAnswerReady?: (answer: AdvisorAnswer) => Promise<void> | void;
+  onAnswerReady?: (answer: AdvisorAnswer, message: string) => Promise<void> | void;
   onConversationUpdated?: (conversation: ConversationState) => Promise<void> | void;
 };
 
@@ -67,6 +68,10 @@ class AdvisorService {
     const conversation = await this.conversations.create(context);
     await this.cache.set(conversation);
     return conversation;
+  }
+
+  async listConversations(context: AdvisorRequestContext) {
+    return this.conversations.listByContext(context);
   }
 
   async getConversation(id: string) {
@@ -172,6 +177,7 @@ class AdvisorService {
               documentRepository: this.documentRepository,
               embeddingProvider: this.embeddingProvider,
               portfolioRepository: this.portfolioRepository,
+              llmProvider: this.provider,
             },
             conversation.context,
             plan.loanId,
@@ -221,7 +227,9 @@ class AdvisorService {
       throw new Error("Advisor did not produce an answer.");
     }
 
-    await this.conversations.appendMessage(conversationId, "assistant", answer.summary);
+    const assistantMessage = formatAdvisorAnswerAsMarkdown(answer);
+
+    await this.conversations.appendMessage(conversationId, "assistant", assistantMessage);
 
     if (snapshot) {
       await this.conversations.appendQuerySnapshot(conversationId, snapshot);
@@ -229,12 +237,13 @@ class AdvisorService {
 
     const updatedConversation = await this.loadConversation(conversationId, false);
     await this.cache.set(updatedConversation);
-    await hooks?.onAnswerReady?.(answer);
+    await hooks?.onAnswerReady?.(answer, assistantMessage);
     await hooks?.onConversationUpdated?.(updatedConversation);
 
     return {
       plan,
       answer,
+      message: assistantMessage,
       conversation: updatedConversation,
       provider: this.provider.name,
     };

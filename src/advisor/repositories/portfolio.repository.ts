@@ -40,25 +40,47 @@ class PortfolioRepository {
   async searchLoans(context: AdvisorRequestContext, filters: QueryConstraint[]) {
     const where: Prisma.LoanWhereInput = {
       tenantId: context.tenantId,
+      AND: filters.map((filter): Prisma.LoanWhereInput => {
+        switch (filter.field) {
+          case "status":
+            return { status: filter.value };
+          case "principalOutstanding":
+            return {
+              principalOutstanding: {
+                [filter.operator]: new Prisma.Decimal(filter.value),
+              },
+            };
+          case "province":
+            return { province: { in: filter.value } };
+          case "borrowerName":
+            return {
+              borrowerName: {
+                contains: filter.value,
+                mode: "insensitive",
+              },
+            };
+          case "loanId":
+            return {
+              id: {
+                equals: filter.value,
+                mode: "insensitive",
+              },
+            };
+          case "riskScore":
+            return { riskScore: { [filter.operator]: filter.value } };
+          case "daysPastDue":
+            return { daysPastDue: { [filter.operator]: filter.value } };
+          case "propertyValue":
+            return {
+              propertyValue: {
+                [filter.operator]: new Prisma.Decimal(filter.value),
+              },
+            };
+          case "extensionEligible":
+            return { extensionEligible: filter.value };
+        }
+      }),
     };
-
-    for (const filter of filters) {
-      switch (filter.field) {
-        case "status":
-          where.status = filter.value as string;
-          break;
-        case "principalOutstanding":
-          where.principalOutstanding = {
-            gt: new Prisma.Decimal(filter.value as number),
-          };
-          break;
-        case "province":
-          where.province = {
-            in: filter.value as string[],
-          };
-          break;
-      }
-    }
 
     const result = await prisma.loan.findMany({
       where,

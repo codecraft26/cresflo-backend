@@ -2,11 +2,13 @@ import type { AdvisorCapabilityResult, AdvisorRequestContext } from "../types.js
 import type { DocumentRepository } from "../repositories/document.repository.js";
 import type { PortfolioRepository } from "../repositories/portfolio.repository.js";
 import type { EmbeddingProvider } from "../providers/embedding-provider.js";
+import type { LlmProvider } from "../providers/provider.js";
 
 type DocumentCapabilityDependencies = {
   documentRepository: DocumentRepository;
   embeddingProvider: EmbeddingProvider;
   portfolioRepository: PortfolioRepository;
+  llmProvider: LlmProvider;
 };
 
 const checkLoanAgreement = async (
@@ -35,9 +37,28 @@ const checkLoanAgreement = async (
       };
     }
 
+    const matchedDocumentIds = [
+      ...new Set(relevantChunks.map((chunk) => chunk.document_id)),
+    ];
+    const documentPreviews = await dependencies.documentRepository.findDocumentPreviews(
+      context,
+      matchedDocumentIds,
+    );
+    const groundedAnswer = await dependencies.llmProvider.generateGroundedAnswer({
+      question,
+      documents: [
+        ...documentPreviews,
+        ...relevantChunks.map((chunk) => ({
+          documentId: chunk.document_id,
+          title: chunk.document_title,
+          content: chunk.content,
+        })),
+      ],
+    });
+
     return {
       answer: {
-        summary: "I found relevant organization documents, but not a single loan-specific agreement target. Here are the most relevant indexed clauses.",
+        summary: groundedAnswer,
         data: {
           matchingClauses: relevantChunks.map((chunk) => ({
             documentId: chunk.document_id,
@@ -48,12 +69,10 @@ const checkLoanAgreement = async (
         evidence: relevantChunks.map((chunk) => ({
           type: "document" as const,
           id: chunk.id,
-          label: `Organization document match from ${chunk.document_id}`,
+          label: chunk.document_title,
           detail: `${chunk.content} (similarity ${chunk.similarity.toFixed(2)})`,
         })),
-        warnings: [
-          "This answer is based on the most relevant indexed organization-level document chunks, not a single identified loan agreement.",
-        ],
+        warnings: ["This answer is grounded in organization-scoped uploaded documents."],
         followUpSuggestions: [
           "Ask about a specific loan agreement if you want a narrower legal answer.",
         ],

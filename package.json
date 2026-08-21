@@ -12,7 +12,8 @@
     "check": "tsc --noEmit",
     "start": "node dist/server.js",
     "db:push": "prisma db push",
-    "db:setup": "node --experimental-strip-types src/scripts/setup-advisor-db.ts"
+    "db:setup": "node --experimental-strip-types src/scripts/setup-advisor-db.ts",
+    "db:seed:norri": "npm run build && node dist/scripts/seed-norri-demo.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

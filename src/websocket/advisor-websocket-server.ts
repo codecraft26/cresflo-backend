@@ -60,6 +60,7 @@ type ServerEvent =
       type: "message_complete";
       conversationId: string;
       answer: unknown;
+      message: string;
       conversation: unknown;
       provider: string;
     }
@@ -94,6 +95,18 @@ const buildContextFromToken = (token: string): AdvisorRequestContext & { email: 
 
 const send = (socket: WebSocket, event: ServerEvent) => {
   socket.send(JSON.stringify(event));
+};
+
+const assertConversationAccess = (
+  conversation: { context: AdvisorRequestContext },
+  context: AdvisorRequestContext,
+) => {
+  if (
+    conversation.context.tenantId !== context.tenantId ||
+    conversation.context.userId !== context.userId
+  ) {
+    throw new HttpError(403, "You cannot access another user's conversation.");
+  }
 };
 
 const chunkText = (value: string, chunkSize = 24) => {
@@ -181,9 +194,7 @@ const initializeAdvisorWebSocketServer = (server: HttpServer) => {
           if (payload.type === "get_conversation") {
             const conversation = await advisorService.getConversation(payload.conversationId);
 
-            if (conversation.context.tenantId !== context.tenantId) {
-              throw new HttpError(403, "You cannot access another organization's conversation.");
-            }
+            assertConversationAccess(conversation, context);
 
             send(socket, {
               type: "conversation_loaded",
@@ -196,9 +207,7 @@ const initializeAdvisorWebSocketServer = (server: HttpServer) => {
           if (payload.type === "send_message") {
             const conversation = await advisorService.getConversation(payload.conversationId);
 
-            if (conversation.context.tenantId !== context.tenantId) {
-              throw new HttpError(403, "You cannot message another organization's conversation.");
-            }
+            assertConversationAccess(conversation, context);
 
             const result = await advisorService.handleMessageWithHooks(
               payload.conversationId,
@@ -217,8 +226,8 @@ const initializeAdvisorWebSocketServer = (server: HttpServer) => {
                     planKind: plan.kind,
                   });
                 },
-                onAnswerReady: async (answer) => {
-                  for (const chunk of chunkText(answer.summary)) {
+                onAnswerReady: async (_answer, message) => {
+                  for (const chunk of chunkText(message)) {
                     send(socket, {
                       type: "message_chunk",
                       conversationId: payload.conversationId,
@@ -234,6 +243,7 @@ const initializeAdvisorWebSocketServer = (server: HttpServer) => {
               type: "message_complete",
               conversationId: payload.conversationId,
               answer: result.answer,
+              message: result.message,
               conversation: result.conversation,
               provider: result.provider,
             });

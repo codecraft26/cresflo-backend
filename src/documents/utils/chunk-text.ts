@@ -35,7 +35,7 @@ const chunkText = (content: string, maxChunkLength = 500) => {
     chunks.push(currentChunk);
   }
 
-  return chunks.filter((chunk) => chunk.length > 0);
+  return chunks.filter((chunk) => chunk.length >= 20);
 };
 
 export { chunkText };

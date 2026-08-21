@@ -82,6 +82,33 @@ class ConversationRepository {
     );
   }
 
+  async listByContext(context: AdvisorRequestContext, limit = 30) {
+    const conversationRows = await prisma.advisorConversation.findMany({
+      where: {
+        tenantId: context.tenantId,
+        userId: context.userId,
+      },
+      include: {
+        messages: {
+          orderBy: { createdAt: "asc" },
+        },
+        snapshots: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: limit,
+    });
+
+    return conversationRows.map((conversationRow) =>
+      mapConversation(
+        conversationRow,
+        conversationRow.messages,
+        conversationRow.snapshots,
+      ),
+    );
+  }
+
   async appendMessage(
     conversationId: string,
     role: ConversationMessageRole,
