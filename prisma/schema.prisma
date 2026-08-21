@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Organization {
+  id                String                  @id
+  name              String
+  slug              String                  @unique
+  lenderId          String                  @map("lender_id")
+  status            String                  @default("active")
+  createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  users             OrganizationUser[]
+  lenderDefinitions LenderDefinition[]
+  documents         Document[]
+  ingestionJobs     DocumentIngestionJob[]
+
+  @@index([slug], map: "idx_organizations_slug")
+  @@map("organizations")
+}
+
+model Superadmin {
+  id           String   @id
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("superadmin")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("superadmins")
+}
+
+model OrganizationUser {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  email          String       @unique
+  fullName       String       @map("full_name")
+  passwordHash   String       @map("password_hash")
+  role           String
+  status         String       @default("active")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId], map: "idx_organization_users_org")
+  @@map("organization_users")
+}
+
+model AdvisorConversation {
+  id          String                 @id
+  tenantId    String                 @map("tenant_id")
+  userId      String                 @map("user_id")
+  lenderId    String                 @map("lender_id")
+  role        String
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+  messages    AdvisorMessage[]
+  snapshots   AdvisorQuerySnapshot[]
+
+  @@map("advisor_conversations")
+}
+
+model AdvisorMessage {
+  id             String              @id
+  conversationId String              @map("conversation_id")
+  role           String
+  content        String
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   AdvisorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("advisor_messages")
+}
+
+model AdvisorQuerySnapshot {
+  id             String              @id
+  conversationId String              @map("conversation_id")
+  snapshotLabel  String              @map("snapshot_label")
+  constraints    Json
+  resultLoanIds  String[]            @default([]) @map("result_loan_ids")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   AdvisorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("advisor_query_snapshots")
+}
+
+model LenderDefinition {
+  tenantId                String       @map("tenant_id")
+  lenderId                String       @map("lender_id")
+  overdueDaysThreshold    Int          @map("overdue_days_threshold")
+  highRiskScoreThreshold  Int          @map("high_risk_score_threshold")
+  organization            Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, lenderId])
+  @@map("lender_definitions")
+}
+
+model Loan {
+  id                               String     @id
+  tenantId                         String     @map("tenant_id")
+  borrowerName                     String     @map("borrower_name")
+  province                         String
+  principalOutstanding             Decimal    @map("principal_outstanding") @db.Decimal(14, 2)
+  status                           String
+  riskScore                        Int        @map("risk_score")
+  daysPastDue                      Int        @map("days_past_due")
+  interestCollectedLastQuarter     Decimal    @map("interest_collected_last_quarter") @db.Decimal(14, 2)
+  interestCollectedPreviousQuarter Decimal    @map("interest_collected_previous_quarter") @db.Decimal(14, 2)
+  propertyValue                    Decimal    @map("property_value") @db.Decimal(14, 2)
+  extensionEligible                Boolean    @map("extension_eligible")
+  documents                        Document[]
+
+  @@index([tenantId, status], map: "idx_loans_tenant_status")
+  @@map("loans")
+}
+
+model Document {
+  id                       String                 @id
+  tenantId                 String                 @map("tenant_id")
+  loanId                   String?                @map("loan_id")
+  title                    String
+  type                     String
+  summary                  String
+  sourceText               String                 @map("source_text")
+  sixMonthExtensionAllowed Boolean                @map("six_month_extension_allowed")
+  createdAt                DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  loan                     Loan?                  @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  chunks                   DocumentChunk[]
+  ingestionJobs            DocumentIngestionJob[]
+  organization             Organization           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, loanId], map: "idx_documents_tenant_loan")
+  @@map("documents")
+}
+
+model DocumentChunk {
+  id         String                  @id
+  documentId String                  @map("document_id")
+  content    String
+  embedding  Unsupported("vector(8)")
+  document   Document                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_chunks")
+}
+
+model DocumentIngestionJob {
+  id                 String       @id
+  tenantId           String       @map("tenant_id")
+  title              String
+  type               String
+  sourceKind         String       @map("source_kind")
+  status             String
+  progressPercentage Int          @map("progress_percentage")
+  statusMessage      String       @map("status_message")
+  errorMessage       String?      @map("error_message")
+  documentId         String?      @map("document_id")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  document           Document?    @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  organization       Organization @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_document_jobs_tenant")
+  @@map("document_ingestion_jobs")
+}

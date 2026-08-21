@@ -1,0 +1,4 @@
+const DEFAULT_SUPERADMIN_EMAIL = "superadmin@cresflo.local";
+const DEFAULT_SUPERADMIN_PASSWORD = "change-me";
+
+export { DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD };
